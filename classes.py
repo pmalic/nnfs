@@ -54,6 +54,8 @@ class Activation_Softmax:
 	# forward pass
 	def forward (self, inputs):
 
+		self.inputs = inputs
+
 		exp_values = np.exp(inputs - np.max(inputs, axis = 1, keepdims = True))
 		probabilities = exp_values / np.sum(exp_values, axis = 1, keepdims = True)
 
@@ -71,6 +73,112 @@ class Activation_Softmax:
 			jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
 
 			self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
+
+
+#################
+# sgd optimizer #
+#################
+class Optimizer_SGD:
+
+	# initialize optimizer - set settings
+	# learning rate of 1. is default for this optimizer
+	def __init__ (self, learning_rate = 1., decay = 0., momentum = 0.):
+
+		self.learning_rate = learning_rate
+		self.current_learning_rate = learning_rate
+		self.decay = decay
+		self.momentum = momentum
+
+		self.iterations = 0
+
+	# call once before any parameter updates
+	def pre_update_params (self):
+
+		if self.decay:
+			self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
+
+	# update params
+	def update_params (self, layer):
+
+		# if we use momentum
+		if self.momentum:
+
+			# if layer doesn't contain momentum arrays,
+			# create them filled with zeros
+			if not hasattr(layer, 'weight_momentums'):
+				layer.weight_momentums = np.zeros_like(layer.weights)
+				layer.bias_momentums = np.zeros_like(layer.biases)
+
+			# build weight updates with momentum - take previous
+			# updates multiplied by retain factor and update with
+			# current gradients
+			weight_updates = self.momentum * layer.weight_momentums - self.current_learning_rate * layer.dweights
+			layer.weight_momentums = weight_updates
+
+			# build bias updates
+			bias_updates = self.momentum * layer.bias_momentums - self.current_learning_rate * layer.dbiases
+			layer.bias_momentums = bias_updates
+
+		# vanilla SGD updates (as before momentum update)
+		else:
+			weight_updates = - self.current_learning_rate * layer.dweights
+			bias_updates = - self.current_learning_rate * layer.dbiases
+
+		# update weights and biases using either
+		# vanilla or momentum updates
+		layer.weights += weight_updates
+		layer.biases += bias_updates
+
+	# call once after any parameter updates
+	def post_update_params (self):
+
+		self.iterations += 1
+
+
+#####################
+# adagrad optimizer #
+#####################
+class Optimizer_AdaGrad:
+
+	# initialize optimizer - set settings
+	def __init__ (self, learning_rate = 1., decay = 0., epsilon = 1e-7):
+
+		self.learning_rate = learning_rate
+		self.current_learning_rate = learning_rate
+		self.decay = decay
+		self.epsilon = epsilon
+
+		self.iterations = 0
+
+	# call once before any parameter updates
+	def pre_update_params (self):
+
+		if self.decay:
+			self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
+
+	# update params
+	def update_params (self, layer):
+
+		# if layer doesn't contain cache arrays,
+		# create them filled with zeros
+		if not hasattr(layer, 'weight_cache'):
+			layer.weight_cache = np.zeros_like(layer.weights)
+			layer.bias_cache = np.zeros_like(layer.biases)
+
+		# update cache with squared current gradients
+		layer.weight_cache += layer.dweights ** 2
+		layer.bias_cache += layer.dbiases ** 2
+
+		# vanilla SGD parameter update + normalization
+		# with square rooted cache
+		layer.weights += - self.current_learning_rate * layer.dweights / (np.sqrt(layer.weight_cache) + self.epsilon)
+		layer.biases += - self.current_learning_rate * layer.dbiases / (np.sqrt(layer.bias_cache) + self.epsilon)
+
+
+	# call once after any parameter updates
+	def post_update_params (self):
+
+		self.iterations += 1
 
 
 #############
@@ -158,7 +266,7 @@ class Activation_Softmax_Loss_CategoricalCrossEntropy:
 
 		# un-hot-encode
 		if len(y_true.shape) == 2:
-			y_true = np.argmax(y_true, axis=1)
+			y_true = np.argmax(y_true, axis = 1)
 
 		self.dinputs = dvalues.copy()
 
@@ -167,4 +275,3 @@ class Activation_Softmax_Loss_CategoricalCrossEntropy:
 
 		# normalize gradients
 		self.dinputs = self.dinputs / samples
-
