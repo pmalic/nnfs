@@ -2,7 +2,7 @@ import numpy as np
 
 
 ###############
-# dense layer #
+# Dense layer #
 ###############
 class Layer_Dense:
 
@@ -11,11 +11,13 @@ class Layer_Dense:
 		self.weights = 0.01 * np.random.randn(n_inputs, n_neurons)
 		self.biases = np.zeros((1, n_neurons))
 
+
 	# forward pass
 	def forward (self, inputs):
 
 		self.inputs = inputs
 		self.output = np.dot(inputs, self.weights) + self.biases
+
 
 	# backward pass
 	def backward (self, dvalues):
@@ -29,7 +31,7 @@ class Layer_Dense:
 
 
 ###################
-# relu activation #
+# ReLU activation #
 ###################
 class Activation_ReLU:
 
@@ -39,6 +41,7 @@ class Activation_ReLU:
 		self.inputs = inputs
 		self.output = np.maximum(0, inputs)
 
+
 	# backward pass
 	def backward (self, dvalues):
 
@@ -47,7 +50,7 @@ class Activation_ReLU:
 
 
 ######################
-# softmax activation #
+# Softmax activation #
 ######################
 class Activation_Softmax:
 
@@ -60,6 +63,7 @@ class Activation_Softmax:
 		probabilities = exp_values / np.sum(exp_values, axis = 1, keepdims = True)
 
 		self.output = probabilities
+
 
 	# backward pass
 	def backward (self, dvalues):
@@ -76,7 +80,7 @@ class Activation_Softmax:
 
 
 #################
-# sgd optimizer #
+# SGD optimizer #
 #################
 class Optimizer_SGD:
 
@@ -91,11 +95,13 @@ class Optimizer_SGD:
 
 		self.iterations = 0
 
+
 	# call once before any parameter updates
 	def pre_update_params (self):
 
 		if self.decay:
 			self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
+
 
 	# update params
 	def update_params (self, layer):
@@ -129,6 +135,7 @@ class Optimizer_SGD:
 		layer.weights += weight_updates
 		layer.biases += bias_updates
 
+
 	# call once after any parameter updates
 	def post_update_params (self):
 
@@ -136,7 +143,7 @@ class Optimizer_SGD:
 
 
 #####################
-# adagrad optimizer #
+# AdaGrad optimizer #
 #####################
 class Optimizer_AdaGrad:
 
@@ -150,11 +157,13 @@ class Optimizer_AdaGrad:
 
 		self.iterations = 0
 
+
 	# call once before any parameter updates
 	def pre_update_params (self):
 
 		if self.decay:
 			self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
+
 
 	# update params
 	def update_params (self, layer):
@@ -181,8 +190,57 @@ class Optimizer_AdaGrad:
 		self.iterations += 1
 
 
+#####################
+# RMSProp optimizer #
+#####################
+class Optimizer_RMSProp:
+
+	# initialize optimizer - set settings
+	def __init__ (self, learning_rate = .001, decay = 0., epsilon = 1e-7, rho = 0.9):
+
+		self.learning_rate = learning_rate
+		self.current_learning_rate = learning_rate
+		self.decay = decay
+		self.epsilon = epsilon
+		self.rho = rho
+
+		self.iterations = 0
+
+
+	# call once before any parameter updates
+	def pre_update_params (self):
+
+		if self.decay:
+			self.current_learning_rate = self.learning_rate * (1. / (1. + self.decay * self.iterations))
+
+
+	# update params
+	def update_params (self, layer):
+
+		# if layer doesn't contain cache arrays,
+		# create them filled with zeros
+		if not hasattr(layer, 'weight_cache'):
+			layer.weight_cache = np.zeros_like(layer.weights)
+			layer.bias_cache = np.zeros_like(layer.biases)
+
+		# update cache with squared current gradients
+		layer.weight_cache = self.rho * layer.weight_cache + (1 - self.rho) * layer.dweights ** 2
+		layer.bias_cache = self.rho * layer.bias_cache + (1 - self.rho) * layer.dbiases ** 2
+
+		# vanilla SGD parameter update + normalization
+		# with square rooted cache
+		layer.weights += - self.current_learning_rate * layer.dweights / (np.sqrt(layer.weight_cache) + self.epsilon)
+		layer.biases += - self.current_learning_rate * layer.dbiases / (np.sqrt(layer.bias_cache) + self.epsilon)
+
+
+	# call once after any parameter updates
+	def post_update_params (self):
+
+		self.iterations += 1
+
+
 #############
-# base loss #
+# Base loss #
 #############
 class Loss:
 
@@ -196,7 +254,7 @@ class Loss:
 
 
 ##################################
-# categorical cross-entropy loss #
+# Categorical cross-entropy loss #
 ##################################
 class Loss_CategoricalCrossEntropy (Loss):
 
@@ -219,6 +277,7 @@ class Loss_CategoricalCrossEntropy (Loss):
 
 		return negative_log_likelihoods
 
+
 	# backward pass
 	def backward (self, dvalues, y_true):
 
@@ -237,7 +296,7 @@ class Loss_CategoricalCrossEntropy (Loss):
 
 
 ###########################################
-# softmax activation + cross-entropy loss #
+# Softmax activation + cross-entropy loss #
 # (for faster backward step)              #
 ###########################################
 class Activation_Softmax_Loss_CategoricalCrossEntropy:
@@ -246,6 +305,7 @@ class Activation_Softmax_Loss_CategoricalCrossEntropy:
 
 		self.activation = Activation_Softmax()
 		self.loss = Loss_CategoricalCrossEntropy()
+
 
 	# forward pass
 	def forward (self, inputs, y_true):
@@ -258,6 +318,7 @@ class Activation_Softmax_Loss_CategoricalCrossEntropy:
 
 		# calculate and return loss value
 		return self.loss.calculate(self.output, y_true)
+
 
 	# backward pass
 	def backward (self, dvalues, y_true):
@@ -275,3 +336,4 @@ class Activation_Softmax_Loss_CategoricalCrossEntropy:
 
 		# normalize gradients
 		self.dinputs = self.dinputs / samples
+

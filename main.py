@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import nnfs
 from nnfs.datasets import spiral_data
 
-from classes import Layer_Dense, Activation_ReLU, Activation_Softmax_Loss_CategoricalCrossEntropy, Optimizer_SGD, Optimizer_AdaGrad
+from classes import Layer_Dense
+from classes import Activation_ReLU, Activation_Softmax_Loss_CategoricalCrossEntropy
+from classes import Optimizer_SGD, Optimizer_AdaGrad, Optimizer_RMSProp
 
 nnfs.init()
 
@@ -28,7 +30,8 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossEntropy()
 
 # create optimizer
 #optimizer = Optimizer_SGD(decay = 1e-3, momentum = 0.8)
-optimizer = Optimizer_AdaGrad(decay = 1e-4)
+#optimizer = Optimizer_AdaGrad(decay = 1e-4)
+optimizer = Optimizer_RMSProp(learning_rate = 0.02, decay = 1e-5, rho = 0.999)
 
 # train in loop
 for epoch in range(10001):
