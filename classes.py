@@ -60,6 +60,39 @@ class Layer_Dense:
 		self.dinputs = np.dot(dvalues, self.weights.T)
 
 
+#################
+# Dropout layer #
+#################
+class Layer_Dropout:
+
+	# init
+	def __init__ (self, rate):
+
+		# store rate, we invert it as for example for dropout
+		# of 0.1 we need success rate of 0.9
+		self.rate = 1 - rate
+
+
+	# forward pass
+	def forward (self, inputs):
+
+		# save input values
+		self.inputs = inputs
+
+		# generate and save scaled mask
+		self.binary_mask = np.random.binomial(1, self.rate, size = inputs.shape) / self.rate
+
+		# apply mask to output values
+		self.output = inputs * self.binary_mask
+
+
+	# backward pass
+	def backward (self, dvalues):
+
+		# gradient on values
+		self.dinputs = dvalues * self.binary_mask
+
+
 ###################
 # ReLU activation #
 ###################

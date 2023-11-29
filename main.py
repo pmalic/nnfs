@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import nnfs
 from nnfs.datasets import spiral_data
 
-from classes import Layer_Dense
+from classes import Layer_Dense, Layer_Dropout
 from classes import Activation_ReLU, Activation_Softmax_Loss_CategoricalCrossEntropy
 from classes import Optimizer_SGD, Optimizer_AdaGrad, Optimizer_RMSProp, Optimizer_Adam
 
@@ -15,15 +15,19 @@ nnfs.init()
 # create dataset
 X, y = spiral_data(samples = 1000, classes = 3)
 
-# create dense layer with 2 input features and 64 output values
-dense1 = Layer_Dense(2, 64, weight_regularizer_l2 = 5e-4, bias_regularizer_l2 = 5e-4)
+# create dense layer with 2 input features and 512 output values
+dense1 = Layer_Dense(2, 512, weight_regularizer_l2 = 5e-4,
+					 									bias_regularizer_l2 = 5e-4)
 
 # create ReLU activation (to be used with dense layer):
 activation1 = Activation_ReLU()
 
-# create second dense layer with 64 input features (as we take output
+# create dropout layer
+dropout1 = Layer_Dropout(0.1)
+
+# create second dense layer with 512 input features (as we take output
 # of previous layer here) and 3 output values (output values)
-dense2 = Layer_Dense(64, 3)
+dense2 = Layer_Dense(512, 3)
 
 # create softmax classifier's combined loss and activation
 loss_activation = Activation_Softmax_Loss_CategoricalCrossEntropy()
@@ -32,7 +36,7 @@ loss_activation = Activation_Softmax_Loss_CategoricalCrossEntropy()
 #optimizer = Optimizer_SGD(decay = 1e-3, momentum = 0.8)
 #optimizer = Optimizer_AdaGrad(decay = 1e-4)
 #optimizer = Optimizer_RMSProp(learning_rate = 0.02, decay = 1e-5, rho = 0.999)
-optimizer = Optimizer_Adam(learning_rate = 0.05, decay = 5e-7)
+optimizer = Optimizer_Adam(learning_rate = 0.05, decay = 5e-5)
 
 # train in loop
 for epoch in range(10001):
@@ -44,9 +48,12 @@ for epoch in range(10001):
 	# takes the output of first dense layer here
 	activation1.forward(dense1.output)
 
+	# perform forward pass through dropout layer
+	dropout1.forward(activation1.output)
+
 	# perform forward pass through second dense layer
 	# takes outputs of activation function of first layer as inputs
-	dense2.forward(activation1.output)
+	dense2.forward(dropout1.output)
 
 	# perform forward pass through the activation/loss function
 	# takes the output of second dense layer here and returns loss
@@ -74,7 +81,8 @@ for epoch in range(10001):
 	# backward pass
 	loss_activation.backward(loss_activation.output, y)
 	dense2.backward(loss_activation.dinputs)
-	activation1.backward(dense2.dinputs)
+	dropout1.backward(dense2.dinputs)
+	activation1.backward(dropout1.dinputs)
 	dense1.backward(activation1.dinputs)
 
 	# update weights and biases
