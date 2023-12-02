@@ -20,7 +20,7 @@ class Layer_Dense:
 
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		self.inputs = inputs
 		self.output = np.dot(inputs, self.weights) + self.biases
@@ -76,10 +76,15 @@ class Layer_Dropout:
 
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, training):
 
 		# save input values
 		self.inputs = inputs
+
+		# if not in the training mode - return values
+		if not training:
+			self.output = inputs.copy()
+			return
 
 		# generate and save scaled mask
 		self.binary_mask = np.random.binomial(1, self.rate, size = inputs.shape) / self.rate
@@ -101,7 +106,7 @@ class Layer_Dropout:
 class Layer_Input:
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		self.output = inputs
 

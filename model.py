@@ -1,4 +1,7 @@
 from layer import Layer_Input
+from activation import Activation_Softmax
+from loss import Loss_CategoricalCrossEntropy
+from combined import Activation_Softmax_Loss_CategoricalCrossEntropy
 
 
 #########
@@ -10,6 +13,9 @@ class Model:
 
 		# create a list of network objects
 		self.layers = []
+
+		# softmax classifier's output object
+		self.softmax_classifier_output = None
 
 
 	# add objects to the model
@@ -71,6 +77,11 @@ class Model:
 		# update loss object with trainable layers
 		self.loss.remember_trainable_layers(self.trainable_layers)
 
+		# if output activation is Softmax and loss function is Categorical Cross-Entropy
+		# create an object of combined activation and loss function containing faster gradient
+		if isinstance(self.layers[-1], Activation_Softmax) and isinstance(self.loss, Loss_CategoricalCrossEntropy):
+			self.softmax_classifier_output = Activation_Softmax_Loss_CategoricalCrossEntropy()
+
 
 	# train the model
 	def train (self, X, y, *, epochs = 1, print_every = 1, validation_data = None):
@@ -82,7 +93,7 @@ class Model:
 		for epoch in range(1, epochs + 1):
 
 			# perform the forward pass
-			output = self.forward(X)
+			output = self.forward(X, training = True)
 
 			# calculate loss
 			data_loss, regularization_loss = self.loss.calculate(output, y, include_regularization = True)
@@ -120,7 +131,7 @@ class Model:
 			X_val, y_val = validation_data
 
 			# perform the forward pass
-			output = self.forward(X_val)
+			output = self.forward(X_val, training = False)
 
 			# calculate the loss
 			loss = self.loss.calculate(output, y_val)
@@ -138,17 +149,17 @@ class Model:
 
 
 	# performs forward pass
-	def forward (self, X):
+	def forward (self, X, training):
 
 		# call forward method on the input layer
 		# this will set the output property that
 		# the first layer in "prev" object is expecting
-		self.input_layer.forward(X)
+		self.input_layer.forward(X, training)
 
 		# call forward method of every object in a chain
 		# pass output of the previous object as a parameter
 		for layer in self.layers:
-			layer.forward(layer.prev.output)
+			layer.forward(layer.prev.output, training)
 
 		# "layer" is now the last object from the list,
 		# return its output
@@ -157,6 +168,26 @@ class Model:
 
 	# performs backward pass
 	def backward (self, output, y):
+
+		# if softmax classifier
+		if self.softmax_classifier_output is not None:
+
+			# first call backward method on the combined activation/loss
+			# this will set dinputs property
+			self.softmax_classifier_output.backward(output, y)
+
+			# since we'll not call backward method of the last layer
+			# which is Softmax activation as we used combined activation/loss object
+			# let's set dinputs in this object
+			self.layers[-1].dinputs = self.softmax_classifier_output.dinputs
+
+			# call backward method going through all the objects
+			# in reversed order passing dinputs as a parameter
+			for layer in reversed(self.layers[:-1]):
+				layer.backward(layer.next.dinputs)
+
+			return
+		#}
 
 		# first call backward method on the loss object
 		# this will set dinputs property that the last

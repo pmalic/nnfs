@@ -7,7 +7,7 @@ import numpy as np
 class Activation_ReLU:
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		self.inputs = inputs
 		self.output = np.maximum(0, inputs)
@@ -32,7 +32,7 @@ class Activation_ReLU:
 class Activation_Softmax:
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		self.inputs = inputs
 
@@ -69,7 +69,7 @@ class Activation_Softmax:
 class Activation_Sigmoid:
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		# save input and calculate/save output
 		# of sigmoid function
@@ -95,7 +95,7 @@ class Activation_Sigmoid:
 class Activation_Linear:
 
 	# forward pass
-	def forward (self, inputs):
+	def forward (self, inputs, _training):
 
 		# just remember values
 		self.inputs = inputs
