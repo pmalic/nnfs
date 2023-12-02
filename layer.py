@@ -40,6 +40,7 @@ class Layer_Dense:
 				dL1 = np.ones_like(self.weights)
 				dL1[self.weights < 0] = -1
 				self.dweights += self.weight_regularizer_l1 * dL1
+		#}
 
 		# L2 on weights
 		if self.weight_regularizer_l2 > 0:
@@ -51,6 +52,7 @@ class Layer_Dense:
 				dL1 = np.ones_like(self.biases)
 				dL1[self.biases < 0] = -1
 				self.dbiases += self.bias_regularizer_l1 * dL1
+		#}
 
 		# L2 on biases
 		if self.bias_regularizer_l2 > 0:
@@ -91,4 +93,15 @@ class Layer_Dropout:
 
 		# gradient on values
 		self.dinputs = dvalues * self.binary_mask
+
+
+###############
+# Input layer #
+###############
+class Layer_Input:
+
+	# forward pass
+	def forward (self, inputs):
+
+		self.output = inputs
 

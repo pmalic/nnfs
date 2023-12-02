@@ -7,35 +7,44 @@ import numpy as np
 class Loss:
 
 	# regularization loss calculation
-	def regularization_loss (self, layer):
+	def regularization_loss (self):
 
 		# 0 by default
 		regularization_loss = 0
 
-		# L1 regularization - weights
-		# calculate only when factor greater than 0
-		if layer.weight_regularizer_l1 > 0:
-			regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
+		for layer in self.trainable_layers:
 
-		# L2 regularization - weights
-		if layer.weight_regularizer_l2 > 0:
-			regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights ** 2)
+			# L1 regularization - weights
+			# calculate only when factor greater than 0
+			if layer.weight_regularizer_l1 > 0:
+				regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
 
-		# L1 regularization - biases
-		# calculate only when factor greater than 0
-		if layer.bias_regularizer_l1 > 0:
-			regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
+			# L2 regularization - weights
+			if layer.weight_regularizer_l2 > 0:
+				regularization_loss += layer.weight_regularizer_l2 * np.sum(layer.weights ** 2)
 
-		# L2 regularization - biases
-		if layer.bias_regularizer_l2 > 0:
-			regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases ** 2)
+			# L1 regularization - biases
+			# calculate only when factor greater than 0
+			if layer.bias_regularizer_l1 > 0:
+				regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.biases))
+
+			# L2 regularization - biases
+			if layer.bias_regularizer_l2 > 0:
+				regularization_loss += layer.bias_regularizer_l2 * np.sum(layer.biases ** 2)
+		#}
 
 		return regularization_loss
 
 
+	# set/remember trainable layers
+	def remember_trainable_layers (self, trainable_layers):
+
+		self.trainable_layers = trainable_layers
+
+
 	# calculates the data and regularization losses
 	# given model output and ground truth values
-	def calculate (self, output, y):
+	def calculate (self, output, y, *, include_regularization = False):
 
 		# calculate sample losses
 		sample_losses = self.forward(output, y)
@@ -43,7 +52,12 @@ class Loss:
 		# calculate mean loss
 		data_loss = np.mean(sample_losses)
 
-		return data_loss
+		# if just data loss - return it
+		if not include_regularization:
+			return data_loss
+
+		# return the data and regularization losses
+		return data_loss, self.regularization_loss()
 
 
 ##################################
@@ -59,11 +73,8 @@ class Loss_CategoricalCrossEntropy (Loss):
 		y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
 
 		if len(y_true.shape) == 1:
-
 			correct_confidences = y_pred_clipped[ range(samples), y_true ]
-
 		elif len(y_true.shape) == 2:
-
 			correct_confidences = np.sum(y_pred_clipped * y_true, axis = 1)
 
 		negative_log_likelihoods = - np.log(correct_confidences)

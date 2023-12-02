@@ -20,6 +20,12 @@ class Activation_ReLU:
 		self.dinputs[self.inputs <= 0] = 0
 
 
+	# calculates predictions for outputs
+	def predictions (self, outputs):
+
+		return outputs
+
+
 ######################
 # Softmax activation #
 ######################
@@ -48,6 +54,13 @@ class Activation_Softmax:
 			jacobian_matrix = np.diagflat(single_output) - np.dot(single_output, single_output.T)
 
 			self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
+		#}
+
+
+	# calculates predictions for outputs
+	def predictions (self, outputs):
+
+		return np.argmax(outputs, axis = 1)
 
 
 #######################
@@ -70,6 +83,12 @@ class Activation_Sigmoid:
 		self.dinputs = dvalues * self.output * (1 - self.output)
 
 
+	# calculates predictions for outputs
+	def predictions (self, outputs):
+
+		return (outputs > 0.5) * 1
+
+
 #####################
 # Linear activation #
 #####################
@@ -88,4 +107,10 @@ class Activation_Linear:
 
 		# derivative is 1, 1 * dvalues = dvalues - chain rule
 		self.dinputs = dvalues.copy()
+
+
+	# calculates predictions for outputs
+	def predictions (self, outputs):
+
+		return outputs
 
