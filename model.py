@@ -1,5 +1,6 @@
 import pickle
 import copy
+import numpy as np
 
 from layer import Layer_Input
 from activation import Activation_Softmax
@@ -372,4 +373,48 @@ class Model:
 
 		# return a model
 		return model
+
+
+	# predicts on the samples
+	def predict (self, X, *, batch_size = None):
+
+		# default value if batch size is not being set
+		prediction_steps = 1
+
+		# calculate number of steps
+		if batch_size is not None:
+
+			prediction_steps = len(X) // batch_size
+
+			# dividing rounds down. if there are some remaining
+			# data, but not a full batch, this won't include it
+			# add 1 to include this not full batch
+			if prediction_steps * batch_size < len(X):
+				prediction_steps += 1
+		#}
+
+		# model outputs
+		output = []
+
+		# iterate over steps
+		for step in range(prediction_steps):
+
+			# if batch size is not set -
+			# validate using one step and full dataset
+			if batch_size is None:
+				batch_X = X
+			# otherwise slice a batch
+			else:
+				batch_X = X[step * batch_size : (step + 1) * batch_size]
+			#}
+
+			# perform the forward pass
+			batch_output = self.forward(batch_X, training = False)
+
+			# append batch prediction to the list of predictions
+			output.append(batch_output)
+		#}
+
+		# stack and return results
+		return np.vstack(output)
 
