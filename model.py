@@ -84,69 +84,158 @@ class Model:
 
 
 	# train the model
-	def train (self, X, y, *, epochs = 1, print_every = 1, validation_data = None):
+	def train (self, X, y, *, epochs = 1, batch_size = None, print_every = 1, validation_data = None):
 
 		# initialize accuracy object
 		self.accuracy.init(y)
 
-		# main training loop
-		for epoch in range(1, epochs + 1):
-
-			# perform the forward pass
-			output = self.forward(X, training = True)
-
-			# calculate loss
-			data_loss, regularization_loss = self.loss.calculate(output, y, include_regularization = True)
-
-			loss = data_loss + regularization_loss
-
-			# get predictions and calculate an accuracy
-			predictions = self.output_layer_activation.predictions(output)
-
-			accuracy = self.accuracy.calculate(predictions, y)
-
-			# perform backward pass
-			self.backward(output, y)
-
-			# optimize (update parameters)
-			self.optimizer.pre_update_params()
-
-			for layer in self.trainable_layers:
-				self.optimizer.update_params(layer)
-
-			self.optimizer.post_update_params()
-
-			# print a summary
-			if not epoch % print_every:
-				print(f'epoch: {epoch}, '
-		  			+ f'acc: {accuracy:.3f}, '
-					+ f'loss: {loss:.3f} (data_loss: {data_loss:.3f}, reg_loss: {regularization_loss:.3f}), '
-					+ f'lr: {self.optimizer.current_learning_rate:.6f}')
-		#}
+		# default value if batch size is not being set
+		train_steps = 1
 
 		# if there is the validation data
+		# set default number of steps for validation as well
 		if validation_data is not None:
+
+			validation_steps = 1
 
 			# for better readability
 			X_val, y_val = validation_data
-
-			# perform the forward pass
-			output = self.forward(X_val, training = False)
-
-			# calculate the loss
-			loss = self.loss.calculate(output, y_val)
-
-			# get predictions and calculate an accuracy
-			predictions = self.output_layer_activation.predictions(output)
-
-			accuracy = self.accuracy.calculate(predictions, y_val)
-
-			# print a summary
-			print('validation: '
-				+ f'acc: {accuracy:.3f}, '
-				+ f'loss: {loss:.3f}')
 		#}
 
+		# calculate number of steps
+		if batch_size is not None:
+
+			train_steps = len(X) // batch_size
+
+			# dividing rounds down. if there are some remaining
+			# data, but not a full batch, this won't include it
+			# add 1 to include this not full batch
+			if train_steps * batch_size < len(X):
+				train_steps += 1
+
+			if validation_data is not None:
+
+				validation_steps = len(X_val) // batch_size
+
+				# dividing rounds down. if there are some remaining
+				# data, but not a full batch, this won't include it
+				# add 1 to include this not full batch
+				if validation_steps * batch_size < len(X_val):
+					validation_steps += 1
+			#}
+		#}
+
+		# main training loop
+		for epoch in range(1, epochs + 1):
+
+			# print epoch number
+			print(f'epoch: {epoch}')
+
+			# reset accumulated values in loss and accuracy objects
+			self.loss.new_pass()
+			self.accuracy.new_pass()
+
+			# iterate over steps
+			for step in range(train_steps):
+
+				# if batch size is not set -
+				# train using one step and full dataset
+				if batch_size is None:
+
+					batch_X = X
+					batch_y = y
+
+				# otherwise slice a batch
+				else:
+					batch_X = X[step * batch_size : (step + 1) * batch_size]
+					batch_y = y[step * batch_size : (step + 1) * batch_size]
+				#}
+
+				# perform the forward pass
+				output = self.forward(batch_X, training = True)
+
+				# calculate loss
+				data_loss, regularization_loss = self.loss.calculate(output, batch_y, include_regularization = True)
+
+				loss = data_loss + regularization_loss
+
+				# get predictions and calculate an accuracy
+				predictions = self.output_layer_activation.predictions(output)
+
+				accuracy = self.accuracy.calculate(predictions, batch_y)
+
+				# perform backward pass
+				self.backward(output, batch_y)
+
+				# optimize (update parameters)
+				self.optimizer.pre_update_params()
+
+				for layer in self.trainable_layers:
+					self.optimizer.update_params(layer)
+
+				self.optimizer.post_update_params()
+
+				# print a summary
+				if not step % print_every or step == train_steps - 1:
+					print(f'step: {step}, acc: {accuracy:.3f}, '
+						+ f'loss: {loss:.3f} (data_loss: {data_loss:.3f}, reg_loss: {regularization_loss:.3f}), '
+						+ f'lr: {self.optimizer.current_learning_rate:.6f}')
+			#}
+
+			# get and print epoch loss and accuracy
+			epoch_data_loss, epoch_regularization_loss = self.loss.calculate_accumulated(include_regularization = True)
+			epoch_loss = epoch_data_loss + epoch_regularization_loss
+
+			epoch_accuracy = self.accuracy.calculate_accumulated()
+
+			print(f'training: acc: {epoch_accuracy:.3f}, '
+				+ f'loss: {epoch_loss:.3f} (data_loss: {epoch_data_loss:.3f}, reg_loss: {epoch_regularization_loss:.3f}), '
+				+ f'lr: {self.optimizer.current_learning_rate:.6f}')
+
+			# if there is the validation data
+			if validation_data is not None:
+
+				# reset accumulated values in loss and accuracy objects
+				self.loss.new_pass()
+				self.accuracy.new_pass()
+
+				# iterate over steps
+				for step in range(validation_steps):
+
+					# if batch size is not set -
+					# validate using one step and full dataset
+					if batch_size is None:
+
+						batch_X = X_val
+						batch_y = y_val
+
+					# otherwise slice a batch
+					else:
+						batch_X = X_val[step * batch_size : (step + 1) * batch_size]
+						batch_y = y_val[step * batch_size : (step + 1) * batch_size]
+					#}
+
+					# perform the forward pass
+					output = self.forward(batch_X, training = False)
+
+					# calculate the loss
+					self.loss.calculate(output, batch_y)
+
+					# get predictions and calculate an accuracy
+					predictions = self.output_layer_activation.predictions(output)
+
+					self.accuracy.calculate(predictions, batch_y)
+				#}
+
+				# get and print validation loss and accuracy
+				validation_loss = self.loss.calculate_accumulated()
+				validation_accuracy = self.accuracy.calculate_accumulated()
+
+				print('validation: '
+					+ f'acc: {validation_accuracy:.3f}, '
+					+ f'loss: {validation_loss:.3f}')
+			#}
+		#}
 
 	# performs forward pass
 	def forward (self, X, training):

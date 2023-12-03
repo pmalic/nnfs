@@ -52,12 +52,37 @@ class Loss:
 		# calculate mean loss
 		data_loss = np.mean(sample_losses)
 
+		# add accumulated sum of losses and sample count
+		self.accumulated_sum += np.sum(sample_losses)
+		self.accumulated_count += len(sample_losses)
+
 		# if just data loss - return it
 		if not include_regularization:
 			return data_loss
 
 		# return the data and regularization losses
 		return data_loss, self.regularization_loss()
+
+
+	# calculates accumulated loss
+	def calculate_accumulated (self, *, include_regularization = False):
+
+		# calculate mean loss
+		data_loss = self.accumulated_sum / self.accumulated_count
+
+		# if just data loss - return it
+		if not include_regularization:
+			return data_loss
+
+		# return the data and regularization losses
+		return data_loss, self.regularization_loss()
+
+
+	# resets accumulated loss
+	def new_pass (self):
+
+		self.accumulated_sum = 0
+		self.accumulated_count = 0
 
 
 ##################################

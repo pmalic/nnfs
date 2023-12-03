@@ -8,6 +8,7 @@ ipykernel = "*"
 pickleshare = "*"
 numpy = "*"
 matplotlib = "*"
+opencv-python = "*"
 nnfs = "*"
 
 [dev-packages]

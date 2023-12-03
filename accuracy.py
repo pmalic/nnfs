@@ -16,7 +16,25 @@ class Accuracy:
 		# calculate an accuracy
 		accuracy = np.mean(comparisons)
 
+		# add accumulated sum of matching values and sample count
+		self.accumulated_sum += np.sum(comparisons)
+		self.accumulated_count += len(comparisons)
+
 		return accuracy
+
+	# calculates accumulated accuracy
+	def calculate_accumulated (self):
+
+		# caculate an accuracy
+		accuracy = self.accumulated_sum / self.accumulated_count
+
+		return accuracy
+
+	# resets accumulated accuracy
+	def new_pass (self):
+
+		self.accumulated_sum = 0
+		self.accumulated_count = 0
 
 
 #################################
