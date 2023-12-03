@@ -1,3 +1,6 @@
+import pickle
+import copy
+
 from layer import Layer_Input
 from activation import Activation_Softmax
 from loss import Loss_CategoricalCrossEntropy
@@ -25,11 +28,16 @@ class Model:
 
 
 	# set loss and optimizer
-	def set (self, *, loss, optimizer, accuracy):
+	def set (self, *, loss = None, optimizer = None, accuracy = None):
 
-		self.loss = loss
-		self.optimizer = optimizer
-		self.accuracy = accuracy
+		if loss is not None:
+			self.loss = loss
+
+		if optimizer is not None:
+			self.optimizer = optimizer
+
+		if accuracy is not None:
+			self.accuracy = accuracy
 
 
 	# finalize the model
@@ -75,7 +83,8 @@ class Model:
 		#}
 
 		# update loss object with trainable layers
-		self.loss.remember_trainable_layers(self.trainable_layers)
+		if self.loss is not None:
+			self.loss.remember_trainable_layers(self.trainable_layers)
 
 		# if output activation is Softmax and loss function is Categorical Cross-Entropy
 		# create an object of combined activation and loss function containing faster gradient
@@ -175,6 +184,7 @@ class Model:
 			if validation_data is not None:
 				self.evaluate(*validation_data, batch_size = batch_size)
 		#}
+
 
 	# performs forward pass
 	def forward (self, X, training):
@@ -285,4 +295,81 @@ class Model:
 		print('validation: '
 			+ f'acc: {validation_accuracy:.3f}, '
 			+ f'loss: {validation_loss:.3f}')
+
+
+	# retrieves and returns parameters of trainable layers
+	def get_parameters (self):
+
+		# create a list for parameters
+		parameters = []
+
+		for layer in self.trainable_layers:
+			parameters.append(layer.get_parameters())
+
+		# return the list
+		return parameters
+
+
+	# updates the model with new parameters
+	def set_parameters (self, parameters):
+
+		# iterate over the parameters and layers
+		# and update each layers with each set of the parameters
+		for parameter_set, layer in zip(parameters, self.trainable_layers):
+			layer.set_parameters(*parameter_set)
+
+
+	# saves the parameters to a file
+	def save_parameters (self, path):
+
+		# open a file in the binary-write mode
+		# and save parameters into it
+		with open(path, 'wb') as f:
+			pickle.dump(self.get_parameters(), f)
+
+
+	# loads the weights and updates a model instance with them
+	def load_parameters (self, path):
+
+		# open a file in the binary-read mode
+		# load weights and update trainable layers
+		with open(path, 'rb') as f:
+			self.set_parameters(pickle.load(f))
+
+
+	# saves the model
+	def save (self, path):
+
+		# make a deep copy of current model instance
+		model = copy.deepcopy(self)
+
+		# reset accumulated values in loss and accuracy objects
+		model.loss.new_pass()
+		model.accuracy.new_pass()
+
+		# remove data from the input layer
+		# and gradients from the loss object
+		model.input_layer.__dict__.pop('output', None)
+		model.loss.__dict__.pop('dinputs', None)
+
+		# for each layer remove inputs, output and dinputs properties
+		for layer in model.layers:
+			for property in ['inputs', 'output', 'dinputs', 'dweights', 'dbiases']:
+				layer.__dict__.pop(property, None)
+
+		# open a file in binary-write mode and save the model
+		with open(path, 'wb') as f:
+			pickle.dump(model, f)
+
+
+	# loads and returns a model
+	@staticmethod
+	def load (path):
+
+		# open file in the binary-read mode, load a model
+		with open(path, 'rb') as f:
+			model = pickle.load(f)
+
+		# return a model
+		return model
 

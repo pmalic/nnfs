@@ -62,6 +62,19 @@ class Layer_Dense:
 		self.dinputs = np.dot(dvalues, self.weights.T)
 
 
+	# retrieve layer parameters
+	def get_parameters (self):
+
+		return self.weights, self.biases
+
+
+	# set weights and biases in a layer instance
+	def set_parameters (self, weights, biases):
+
+		self.weights = weights
+		self.biases = biases
+
+
 #################
 # Dropout layer #
 #################

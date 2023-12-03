@@ -50,6 +50,14 @@ model.finalize()
 # train the model
 model.train(X, y, validation_data = (X_test, y_test), epochs = 10, batch_size = 128, print_every = 100)
 
+# save the model
+model.save('fashion_mnist.model')
+
+# new model
+
+# load the model
+model = Model.load('fashion_mnist.model')
+
 # evaluate the model
-model.evaluate(X, y)
+model.evaluate(X_test, y_test)
 
